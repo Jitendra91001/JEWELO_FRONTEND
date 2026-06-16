@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import { clearCart } from "@/store/cartThunk";
+import { clearCart, getCart } from "@/store/cartThunk";
 import SEOHead from "@/components/common/SEOHead";
 import { CURRENCY } from "@/utils/constants";
 import { toast } from "sonner";
@@ -36,9 +36,24 @@ interface CheckoutCartItem {
 
 const Checkout = () => {
   const items = useAppSelector((s) => s.cart.items) as CheckoutCartItem[];
+  const cartLoading = useAppSelector((s) => s.cart.loading);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [cartFetched, setCartFetched] = useState(false);
+
+  useEffect(() => {
+    if (!cartFetched) {
+      dispatch(getCart());
+      setCartFetched(true);
+    }
+  }, [dispatch, cartFetched]);
+
+  useEffect(() => {
+    if (!cartLoading && items.length === 0) {
+      navigate("/cart");
+    }
+  }, [cartLoading, items.length, navigate]);
   const [address, setAddress] = useState<AddressState>({ name: "", phone: "", line1: "", line2: "", city: "", state: "", pincode: "" });
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -108,8 +123,8 @@ const Checkout = () => {
       setOrderPlaced(true);
       toast.success("Order placed successfully!");
     } catch (error: unknown) {
-      const err = error as any;
-      const message = err?.response?.data?.message || err?.message || "Failed to place order";
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const message = err.response?.data?.message || err.message || "Failed to place order";
       setPaymentError(message);
       toast.error(message);
     } finally {
@@ -130,6 +145,14 @@ const Checkout = () => {
           </button>
         </div>
       </>
+    );
+  }
+
+  if (cartLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading your cart…</p>
+      </div>
     );
   }
 
@@ -159,7 +182,7 @@ const Checkout = () => {
           ))}
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="grid gap-8 lg:grid-cols-[1.8fr_0.9fr] items-start">
           <div className="flex-1">
             {step === 1 && (
               <div className="space-y-4">
@@ -274,8 +297,8 @@ const Checkout = () => {
           </div>
 
           {/* Summary */}
-          <div className="lg:w-80">
-            <div className="bg-card border border-border rounded-sm p-6 sticky top-28">
+          <div className="lg:col-span-1">
+            <div className="bg-card border border-border rounded-sm p-6 lg:sticky lg:top-28">
               <h3 className="font-display text-lg font-semibold text-foreground mb-4">Order Summary</h3>
               <div className="space-y-2 text-sm font-body">
                 <div className="flex justify-between text-foreground/80"><span>Subtotal</span><span>{CURRENCY}{subtotal.toLocaleString()}</span></div>

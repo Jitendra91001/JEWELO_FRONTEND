@@ -48,8 +48,11 @@ const cartSlice = createSlice({
       })
       .addCase(getCart.fulfilled, (state, action) => {
         state.loading = false;
-        const cartItems = action.payload?.data?.items;
-        console.log(cartItems,"cartItems")
+        const payloadData = action.payload?.data;
+        const cartItems =
+          payloadData?.items ??
+          (Array.isArray(payloadData) ? payloadData : undefined);
+
         state.items = Array.isArray(cartItems) ? cartItems : [];
         state.error = null;
       })
